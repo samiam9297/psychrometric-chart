@@ -1,3 +1,10 @@
+@font-face {
+    font-family: 'FranklinGothic-MediumCond';
+    src: url('./FRAMDCN.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 .constantTemp:hover {
     stroke-width: 1;
     pointer-events: all;

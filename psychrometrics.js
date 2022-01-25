@@ -8,7 +8,7 @@ const c11 = 1.289036e-5;
 const c12 = -2.4780681e-9;
 const c13 = 6.5459673;
 
-const minTemp = 32;
+const minTemp = 20;
 
 const Rda = 53.35; // Dry air gas constant, ft-lbf / lbda-R
 
@@ -158,6 +158,24 @@ function WetBulbRh(wetBulb, rh, totalP) {
     }
 
     return { temp: testTemp, pv: pvFromTempRh(testTemp, rh) }
+}
+
+// Create Module Bounds array
+function createModuleBoundsArea(boundsBottom, boundsTop) {
+    let data = [];
+    boundsBottom.forEach((a, index) => {
+        let x0 = a.x;
+        let y0 = a.y;
+
+        data.push({
+            x0: x0,
+            y0: y0,
+            x1: boundsTop[index] ? boundsTop[index].x : 100,
+            y1: boundsTop[index] ? boundsTop[index].y : 0
+        });
+    })
+
+    return data;
 }
 
 // temp: Dry bulb temperature in °F
@@ -323,16 +341,22 @@ function ViewModel() {
     var self = this;
     // Start by creating svg elements in the order that I want
     // them layered. The later items will be on top of the earlier items.
-    var vPaths = svg.append("g").attr("id", "vpaths");
+    svg.append("g").attr("id", "modules-1");
+    svg.append("g").attr("id", "modules-2");
+    svg.append("g").attr("id", "modules-3");
+    svg.append("g").attr("id", "modules-4");
+    svg.append("g").attr("id", "modules-1-legend");
+    svg.append("g").attr("id", "modules-2-legend");
+    svg.append("g").attr("id", "modules-3-legend");
+    svg.append("g").attr("id", "modules-4-legend");
+    svg.append("g").attr("id", "modules-5-legend");
     svg.append("g").attr("id", "specific-humidity-lines");
     svg.append("g").attr("id", "x-axis");
     var wetBulbPaths = svg.append("g").attr("id", "wetbulb-lines");
     svg.append("g").attr("id", "yAxisHumid");
-    var enthalpyPaths = svg.append("g").attr("id", "enthalpyLines");
     svg.append("g").attr("id", "rh-lines");
     svg.append("g").attr("id", "temp-lines");
 
-    var enthalpyBorderPath = svg.append("g").attr("id", "enthalpy-border").append("path");
     var hLabels = svg.append("g").attr("id", "h-labels");
     svg.append("g").attr("id", "boundary-lines").append("path")
         .attr("stroke", "#000000")
@@ -351,17 +375,18 @@ function ViewModel() {
     svg.append("g").attr("id", "wetbulb-labels-backgrounds");
     svg.append("g").attr("id", "wetbulb-labels");
 
+    svg.append("g").attr("id", "modules-labels");
     svg.append("g").attr("id", "states");
     svg.append("g").attr("id", "state-circles");
     svg.append("g").attr("id", "state-backgrounds");
     svg.append("g").attr("id", "state-text");
     svg.append("g").attr("id", "dewpointlabels");
 
-    self.maxTempInput = ko.observable("120").extend({ rateLimit: 500 });
+    self.maxTempInput = ko.observable("100").extend({ rateLimit: 500 });
     self.maxTemp = ko.computed(() => {
         var parsedValue = parseInt(self.maxTempInput());
         if (!isNaN(parsedValue) && parsedValue > minTemp && parsedValue < 180) return parsedValue;
-        return 120;
+        return 100;
     });
 
     self.totalPressureInput = ko.observable("14.7").extend({ rateLimit: 500 });
@@ -424,7 +449,7 @@ function ViewModel() {
         return satPressFromTempIp(minTemp) + 0.05 * self.maxPv();
     });
 
-    self.constantTemps = ko.pureComputed(() => range(minTemp, self.maxTemp(), 1));
+    self.constantTemps = ko.pureComputed(() => range(minTemp, self.maxTemp(), 5));
 
     self.constantTempLines = ko.computed(() => {
         return self.constantTemps().map(temp => {
@@ -556,8 +581,8 @@ function ViewModel() {
             .enter()
             .append("path")
             .attr("fill", "none")
-            .attr("stroke", "red")
-            .attr("stroke-width", 0.5)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1)
             .merge(selection)
             .attr("d", d => self.saturationLine()(d.data));
 
@@ -634,47 +659,6 @@ function ViewModel() {
         });
     });
 
-    ko.computed(() => {
-        var selection = vPaths.selectAll("path").data(self.vLines());
-        selection.enter()
-            .append("path")
-            .attr("fill", "none")
-            .attr("stroke", "purple")
-            .merge(selection)
-            .attr("d", d => self.saturationLine()(d.data));
-
-        selection.exit().remove();
-
-        var data = self.vLines().filter(d => d.v % 0.5 === 0 &&
-                                        d.labelLocation.temp > minTemp &&
-                                        d.labelLocation.temp < self.maxTemp() &&
-                                        d.labelLocation.pv < self.maxPv());
-
-        selection = d3.select("#v-labels").selectAll("text").data(data);
-        selection.enter()
-            .append("text")
-            .attr("class", "ticks")
-            .attr("text-anchor", "middle")
-            .merge(selection)
-            .text(d => d.v.toFixed(1))
-            .attr("x", d => d.x)
-            .attr("y", d => d.y)
-            .attr("transform", d => `rotate(${d.rotationDegrees}, ${d.x}, ${d.y}) translate(0 -5)`);
-        selection.exit().remove();
-
-        selection = d3.select("#v-label-backgrounds").selectAll("rect").data(data);
-        selection.enter()
-            .append("rect")
-            .attr("fill", "white")
-            .attr("width", "25px")
-            .attr("height", "15px")
-            .merge(selection)
-            .attr("x", d => self.xScale()(d.labelLocation.temp))
-            .attr("y", d => self.yScale()(d.labelLocation.pv))
-            .attr("transform", d => `rotate(${d.rotationDegrees}, ${d.x}, ${d.y}) translate(0 -5) translate(-12 -12)`);
-        selection.exit().remove();
-    });
-
     function tempAtStraightEnthalpyLine(enthalpy) {
         var rise = self.maxPv() - self.bottomLeftBorderPv();
         var run = (self.upperLeftBorderTemp()) - minTemp;
@@ -730,53 +714,12 @@ function ViewModel() {
         }
     };
 
-    self.constEnthalpyLines = ko.computed(() => self.constEnthalpyValues().map(self.enthalpyValueToLine));
-
-    // Draw enthalpy items.
-    ko.computed(() => {
-        var selection = enthalpyPaths.selectAll("path").data(self.constEnthalpyLines().filter(d => d.coords));
-        selection.enter()
-            .append("path")
-            .attr("fill", "none")
-            .attr("stroke", "green")
-            .attr("stroke-width", d => {
-                if (d.h % 5 === 0) {
-                    return 1;
-                } if (d.h % 1 === 0) {
-                    return 0.75;
-                }
-                return 0.25;
-            })
-            .merge(selection)
-            .attr("d", d => self.saturationLine()(d.coords));
-
-        selection.exit().remove();
-    });
-
-    ko.computed(() => {
-        var data = self.constEnthalpyValues().filter(h =>
-            h % 5 === 0 &&
-            h < enthalpyFromTempPv(self.upperLeftBorderTemp(), self.maxPv(), self.totalPressure())
-        );
-
-        var selection = hLabels.selectAll("text").data(data);
-        selection
-            .enter()
-            .append("text")
-            .attr("class", "ticks")
-            .text(d => d.toString())
-            .merge(selection)
-            .attr("x", h => self.xScale()(tempAtStraightEnthalpyLine(h) - 0.75))
-            .attr("y", h => self.yScale()(pvFromEnthalpyTemp(h, tempAtStraightEnthalpyLine(h), self.totalPressure()) + 0.005));
-        selection.exit().remove();
-    });
-
     var minWetBulb = wetBulbFromTempω(minTemp, 0, self.totalPressure());
     self.maxWetBulb = ko.computed(() => wetBulbFromTempω(self.maxTemp(), wFromPv(self.maxPv(), self.totalPressure()), self.totalPressure()));
     self.wetBulbBottomRight = ko.computed(() => wetBulbFromTempω(self.maxTemp(), 0, self.totalPressure()));
-    self.wetBulbValues = ko.computed(() => range(Math.ceil(minWetBulb), Math.floor(self.maxWetBulb()), 1));
+    self.wetBulbValues = ko.computed(() => range(Math.ceil(minWetBulb), Math.floor(self.maxWetBulb()), 5));
 
-    var wetBulbLabelRh = 0.55; // RH value to put all the wetbulb labels.
+    var wetBulbLabelRh = 0.57; // RH value to put all the wetbulb labels.
     self.wetBulbLines = ko.computed(() => {
 
         // This is the derivative of Pv vs. temperature for a given
@@ -823,7 +766,7 @@ function ViewModel() {
                 upperTemp = self.maxTemp();
             }
 
-            var data = range(lowerTemp, upperTemp, 3).map(mapFunction);
+            var data = range(lowerTemp, upperTemp, 1).map(mapFunction);
             var labelState = WetBulbRh(wetbulbTemp, wetBulbLabelRh, self.totalPressure());
             var midtemp = labelState.temp;
             var rotationAngle = angleFromDerivative(derivative(midtemp, wetbulbTemp));
@@ -846,9 +789,9 @@ function ViewModel() {
         var selection = wetBulbPaths.selectAll("path").data(self.wetBulbLines());
         selection.enter().append("path")
             .attr("fill", "none")
-            .attr("stroke", "orange")
-            .attr("stroke-dasharray", "1 1")
-            .attr("stroke-width", 0.5)
+            .attr("stroke", "black")
+            .attr("stroke-dasharray", "6")
+            .attr("stroke-width", 1)
             .merge(selection)
             .attr("d", d => self.saturationLine()(d.data));
         selection.exit().remove();
@@ -880,6 +823,315 @@ function ViewModel() {
         selection.exit().remove();
     });
 
+    // Modules Required Area Charts
+    ko.computed(() => {
+        var wetbulbTemps = [55, 63.5, 70.7, 77, 80.1];
+        var moduleBoundsData = [];
+        wetbulbTemps.forEach((wetbulbTemp) => {
+            var mapFunction = temp => {
+                return {
+                    y: pvFromw(ωFromWetbulbDryBulb(wetbulbTemp, temp, self.totalPressure()), self.totalPressure()),
+                    x: temp
+                };
+            };
+
+            var lowerTemp;
+            var upperTemp;
+            if (wetbulbTemp < minTemp) {
+                lowerTemp = minTemp;
+                upperTemp = tempFromWetbulbω(wetbulbTemp, 0, self.totalPressure());
+            } else if (wetbulbTemp < self.wetBulbBottomRight()) {
+                lowerTemp = wetbulbTemp;
+                upperTemp = tempFromWetbulbω(wetbulbTemp, 0, self.totalPressure());
+            } else if (wetbulbTemp < self.tempAtCutoff()) {
+                lowerTemp = wetbulbTemp;
+                upperTemp = self.maxTemp();
+            } else {
+                lowerTemp = tempFromWetbulbω(wetbulbTemp, wFromPv(self.maxPv(), self.totalPressure()), self.totalPressure());
+                upperTemp = self.maxTemp();
+            }
+
+            var data = range(lowerTemp, upperTemp, 1).map(mapFunction);
+            moduleBoundsData.push(data)
+        })
+
+        var areaData = [
+            [
+                {
+                    "x0": 55,
+                    "y0": 0.21410075364760797,
+                    "x1": 63.5,
+                    "y1": 0.29011100478567914
+                },
+                {
+                    "x0": 95,
+                    "y0": 0.003633448333167196,
+                    "x1": 95,
+                    "y1": 0.124235434
+                },
+                {
+                    "x0": 95.6920634038409,
+                    "y0": 0,
+                    "x1": 95.6920634038409,
+                    "y1": 0.124235434
+                },
+                {
+                    "x0": 100,
+                    "y0": 0,
+                    "x1": 100,
+                    "y1": 0.02451059
+                }
+            ],
+            [
+                {
+                    "x0": 63.5,
+                    "y0": 0.29011100478567914,
+                    "x1": 70.7,
+                    "y1": 0.37204468718892597
+                },
+                {
+                    "x0": 95,
+                    "y0": 0.1242962844118115,
+                    "x1": 95,
+                    "y1": 0.24421792322919358
+                },
+                {
+                    "x0": 95.6920634038409,
+                    "y0": 0.124235434,
+                    "x1": 95.6920634038409,
+                    "y1": 0.24421792322919358
+                },
+                {
+                    "x0": 100,
+                    "y0": 0.02451059,
+                    "x1": 100,
+                    "y1": 0.132723886
+                }
+            ],
+            [
+                {
+                    "x0": 70.7,
+                    "y0": 0.37204468718892597,
+                    "x1": 77,
+                    "y1": 0.4596557939864845
+                },
+                {
+                    "x0": 95,
+                    "y0": 0.24421792322919358,
+                    "x1": 95,
+                    "y1": 0.3651
+                },
+                {
+                    "x0": 95.6920634038409,
+                    "y0": 0.24421792322919358,
+                    "x1": 95.6920634038409,
+                    "y1": 0.3651
+                },
+                {
+                    "x0": 100,
+                    "y0": 0.132723886,
+                    "x1": 100,
+                    "y1": 0.2416
+                }
+            ],
+            [
+                {
+                    "x0": 77,
+                    "y0": 0.4596557939864845,
+                    "x1": 80.1,
+                    "y1": 0.5090155347971046
+                },
+                {
+                    "x0": 95,
+                    "y0": 0.3651,
+                    "x1": 95,
+                    "y1": 0.430822625
+                },
+                {
+                    "x0": 95.6920634038409,
+                    "y0": 0.3651,
+                    "x1": 95.6920634038409,
+                    "y1": 0.430822625
+
+                },
+                {
+                    "x0": 100,
+                    "y0": 0.2416,
+                    "x1": 100,
+                    "y1": 0.300648804
+                }
+            ]
+        ];
+
+        var colors = ['#0085ac', '#77777a', '#004069', '#a62337']
+        var svgYDiv = [9, 4.5, 2.8, 1.9];
+        var text = ['1 Module', '1.5 Modules', '2 Modules', '2.5 Modules'];
+
+        areaData.forEach((area, index) => {
+            var selection = d3.select("#modules-" + (index + 1)).selectAll("path").data(area);
+
+            var areaFunc = d3.area().curve(d3.curveBasis)
+                .x0(function (d) { return self.xScale()(d.x0); })
+                .x1(function (d) { return self.xScale()(d.x1); })
+                .y0(function (d) { return self.yScale()(d.y0); })
+                .y1(function (d) { return self.yScale()(d.y1); });
+
+            selection.enter()
+                .append("path")
+                .attr("fill", colors[index])
+                .merge(selection)
+                .attr("d", areaFunc(area))
+                .style("opacity", 0.65);
+            selection.exit().remove();
+
+            // For some reason, D3JS draws duplicate area paths for each entry and overlays them.
+            // This is how we'll clean up the duplicates and only keep the first one..
+            var cleanUpDiv = document.getElementById("modules-" + (index + 1));
+            while (cleanUpDiv.children.length > 1) {
+               cleanUpDiv.removeChild(cleanUpDiv.lastChild);
+            }
+
+            // Module Labels
+            const labelDiv = d3.select("#modules-labels");
+            const x = self.xScale()(self.maxTemp() + 3);
+            const y = self.yScale()(self.maxPv() / svgYDiv[index]);
+            const width = 100;
+            const height = 35;
+
+            var label = labelDiv.append("g")
+                .attr("x", x)
+                .attr("y", y);
+
+            label.append("rect")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("fill", colors[index])
+                .attr("x", x)
+                .attr("y", y);
+
+            label.append("polygon")
+                .attr("fill", colors[index])
+                .attr("points", [
+                    [self.xScale()(self.maxTemp()) - 20, y + 45],
+                    [x + 1, y + height / 2 - 5],
+                    [x + 1, y + height / 2 + 5]
+                ]);
+
+            label.append("text")
+                .attr("id", "module-" + (index + 1) + "-label")
+                .attr("font-family", "FranklinGothic-MediumCond")
+                .attr("fill", "white")
+                .text(text[index])
+                .attr("x", x + width / 2)
+                .attr("y", y + height / 1.6)
+                .attr("text-anchor", "middle");
+        })
+
+        var legendLines = [
+            [
+                {
+                    "x": 55,
+                    "y": 0.21410075364760797,
+                },
+                {
+                    "x": 95.6920634038409,
+                    "y": 0,
+                }
+            ],
+            [
+                {
+                    "x": 63.5,
+                    "y": 0.29011100478567914,
+                },
+                {
+                    "x": 95,
+                    "y": 0.1242962844118115,
+                },
+                {
+                    "x": 95.6920634038409,
+                    "y": 0.124235434,
+                },
+                {
+                    "x": 100,
+                    "y": 0.02451059,
+                }
+            ],
+            [
+                {
+                    "x": 70.7,
+                    "y": 0.37204468718892597,
+                },
+                {
+                    "x": 95,
+                    "y": 0.24421792322919358,
+                },
+                {
+                    "x": 95.6920634038409,
+                    "y": 0.24421792322919358,
+                },
+                {
+                    "x": 100,
+                    "y": 0.132723886,
+                }
+            ],
+            [
+                {
+                    "x": 77,
+                    "y": 0.4596557939864845,
+                },
+                {
+                    "x": 95,
+                    "y": 0.3651,
+                },
+                {
+                    "x": 95.6920634038409,
+                    "y": 0.3651,
+                },
+                {
+                    "x": 100,
+                    "y": 0.2416,
+                }
+            ],
+            [
+                {
+                    "x": 80.1,
+                    "y": 0.5090155347971046,
+                },
+                {
+                    "x": 95,
+                    "y": 0.430822625,
+                },
+                {
+                    "x": 95.6920634038409,
+                    "y": 0.430822625,
+                },
+                {
+                    "x": 100,
+                    "y": 0.300648804,
+                }
+            ]
+        ];
+
+        legendLines.forEach((legend, index) => {
+            var selection = d3.select("#modules-" + (index + 1) + "-legend").selectAll("path").data(legend);
+            console.log(selection)
+
+            var lineFunc = d3.line().curve(d3.curveBasis)
+                .x(function (d) { return self.xScale()(d.x); })
+                .y(function (d) { return self.yScale()(d.y); })
+
+            selection.enter()
+                .append("path")
+                .attr("fill", "none")
+                .attr("stroke", "black")
+                .attr("stroke-width", 4)
+                .attr("stroke-dasharray", index < 3 ? "7" : "0")
+                .attr("d", lineFunc(legend))
+            selection.exit().remove();
+        })
+    });
+    // END Modules Required Area
+
     self.boundaryLineData = ko.computed(() => {
         return [
             { x: self.maxTemp(), y: 0 },
@@ -897,20 +1149,11 @@ function ViewModel() {
             .attr("d", self.saturationLine()(self.boundaryLineData()) + " Z");
     });
 
-    ko.computed(() => {
-        enthalpyBorderPath
-            .attr(
-                "d",
-                self.saturationLine()([
-                    { x: minTemp, y: satPressFromTempIp(minTemp) },
-                    { x: minTemp, y: self.bottomLeftBorderPv() },
-                    { x: self.upperLeftBorderTemp(), y: self.maxPv() },
-                    { x: self.tempAtCutoff(), y: self.maxPv() }
-                ])
-            ).call(boundaryLine);
-    });
-
-    self.states = ko.observableArray([new StateTempω(self.maxTemp(), self.maxω(), "State 1", self.totalPressure())]);
+    self.states = ko.observableArray(
+        [
+            new StateTempω(self.maxTemp(), self.maxω(), "State 1", self.totalPressure())
+        ]
+    );
 
     self.addState = () => {
         self.states.push(
@@ -922,7 +1165,6 @@ function ViewModel() {
 
     var elementObservables = [
         { obs: "showEnthalpyLines", ids: ["enthalpyLines"] },
-        { obs: "showvLines", ids: ["vpaths",  "v-label-backgrounds", "v-labels"] },
         { obs: "showω", ids: ["specific-humidity-lines"] },
         { obs: "showTemp", ids: ["temp-lines"] },
         { obs: "showWetBulb", ids: ["wetbulb-lines", "wetbulb-labels",  "wetbulb-labels-backgrounds"] },
@@ -930,7 +1172,11 @@ function ViewModel() {
     ];
 
     elementObservables.map(o => {
-        self[o.obs] = ko.observable(true);
+        if (o.obs !== "showω") {
+            self[o.obs] = ko.observable(true);
+        } else {
+            self[o.obs] = ko.observable(false);
+        }
         ko.computed(() => {
             for (let i = 0; i < o.ids.length; i++) {
                 var element = document.getElementById(o.ids[i]);
@@ -983,7 +1229,9 @@ function ViewModel() {
         selection
             .enter()
             .append("circle")
-            .style("fill", "red")
+            .style("fill", "#FF7900")
+            .attr("stroke", "#000000")
+            .attr("stroke-width", 2)
             .attr("r", "5")
             .merge(selection)
             .attr("cx", d => self.xScale()(d.temperature()))
@@ -991,45 +1239,37 @@ function ViewModel() {
         selection.exit().remove();
     });
 
-    var yAxisSelection = svg.append("g").attr("id", "yAxis");
-    var pvAxisTemp = self.maxTemp() + 6;
     var middleX = self.xScale()((self.maxTemp() + minTemp) / 2);
-
-    yAxisSelection
-        .attr("transform", "translate(" + self.xScale()(pvAxisTemp) + ",0)")
-        .call(self.yAxis());
 
     // X-axis label
     svg.append("text")
-        .text("Dry bulb temperature / °F")
+        .text("DRY BULB TEMPERATURE [°F]")
         .attr("x", middleX)
-        .attr("y", self.yScale()(-0.05));
+        .attr("y", self.yScale()(-0.06))
+        .attr("font-family", "FranklinGothic-MediumCond");
 
     // ω label
     svg.append("text")
-        .text("ω")
+        .attr("id", "ωlabel")
+        .attr("font-family", "FranklinGothic-MediumCond")
+        .text("HUMIDITY RATIO")
         .attr("x", self.xScale()(self.maxTemp() + 4))
         .attr("y", self.yScale()(self.maxPv() / 2));
 
-    var pvAxisX = self.xScale()(pvAxisTemp + 5);
-    var pvAxisY = self.yScale()(self.maxPv() / 2);
-    svg.append("text")
-        .text("Vapor Press. / psia")
-        .attr("x", pvAxisX)
-        .attr("y", pvAxisY)
-        .attr("transform", `rotate(-90, ${pvAxisX}, ${pvAxisY})`);
-
     // Main enthalpy axis label
-    svg.append("text").attr("id", "enthalpy-label").text("Enthalpy / Btu per lb d.a.");
+    svg.append("text")
+        .attr("id", "enthalpy-label")
+        .attr("font-family", "FranklinGothic-MediumCond")
+        .text("WET BULB TEMPERATURE [°F]");
 
     ko.computed(() => {
         var rise = self.maxPv() - self.bottomLeftBorderPv();
         var run = self.upperLeftBorderTemp() - minTemp;
 
-        var angle = Math.atan((rise * self.pixelsPerPsia()) / (run * self.pixelsPerTemp())) * 180 / Math.PI;
+        var angle = Math.atan((rise * self.pixelsPerPsia()) / (run * self.pixelsPerTemp())) * 220 / Math.PI;
 
-        var basex = (self.upperLeftBorderTemp() + minTemp) / 2;
-        var basey = (self.maxPv() + self.bottomLeftBorderPv()) / 2;
+        var basex = 65;
+        var basey = 0.3;
 
         var absBasex = self.xScale()(basex)
         var absBasey = self.yScale()(basey)
@@ -1041,6 +1281,7 @@ function ViewModel() {
             .attr("transform", `rotate(${angle}, ${absBasex}, ${absBasey}) translate(-100 -40)`);
     });
 
+    // Main enthalpy axis label
     ko.computed(() => {
         var selection = d3.select("#dewpointlabels").selectAll("text")
             .data(
@@ -1062,7 +1303,6 @@ function ViewModel() {
         return URL.createObjectURL(blob);
     });
 
-    self.savePng = () => saveSvgAsPng(document.getElementById("chartsvg"), "chart.png", { backgroundColor: "white" });
 }
 
 var viewModel = new ViewModel();
