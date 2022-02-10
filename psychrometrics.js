@@ -46,6 +46,9 @@ const c12 = -2.4780681e-9
 const c13 = 6.5459673
 const minTemp = 20
 const Rda = 53.35 // Dry air gas constant, ft-lbf / lbda-R
+let testTemp;
+let angleFromDerivative;
+let derivative;
 
 function newtonRaphson (zeroFunc, derivativeFunc, initialX, tolerance) {
     if (typeof tolerance === 'undefined') tolerance = 0.0001
