@@ -37,8 +37,7 @@ const forecast = {
     }
 }
 
-/* global ko, d3 */
-/* global Blob */
+// Constants
 const c8 = -1.0440397e4
 const c9 = -1.129465e1
 const c10 = -2.7022355e-2
@@ -825,36 +824,6 @@ function ViewModel () {
 
     // Modules Required Area Charts
     ko.computed(() => {
-        const wetbulbTemps = [55, 63.5, 70.7, 77, 80.1]
-        const moduleBoundsData = []
-        wetbulbTemps.forEach((wetbulbTemp) => {
-            const mapFunction = temp => {
-                return {
-                    y: pvFromw(wFromWetbulbDryBulb(wetbulbTemp, temp, self.totalPressure()), self.totalPressure()),
-                    x: temp
-                }
-            }
-
-            let lowerTemp
-            let upperTemp
-            if (wetbulbTemp < minTemp) {
-                lowerTemp = minTemp
-                upperTemp = tempFromWetbulbw(wetbulbTemp, 0, self.totalPressure())
-            } else if (wetbulbTemp < self.wetBulbBottomRight()) {
-                lowerTemp = wetbulbTemp
-                upperTemp = tempFromWetbulbw(wetbulbTemp, 0, self.totalPressure())
-            } else if (wetbulbTemp < self.tempAtCutoff()) {
-                lowerTemp = wetbulbTemp
-                upperTemp = self.maxTemp()
-            } else {
-                lowerTemp = tempFromWetbulbw(wetbulbTemp, wFromPv(self.maxPv(), self.totalPressure()), self.totalPressure())
-                upperTemp = self.maxTemp()
-            }
-
-            const data = range(lowerTemp, upperTemp, 1).map(mapFunction)
-            moduleBoundsData.push(data)
-        })
-
         const areaData = [
             [
                 {
