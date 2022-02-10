@@ -1,5 +1,0 @@
-#!/bin/sh
-
-rsync -rlt --progress --verbose psychrometrics.css psychrometrics.js index.html savepng.js psy:/var/www/html/
-
-# vim:ft=sh

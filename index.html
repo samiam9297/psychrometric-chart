@@ -1,54 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="dynamic psychrometric chart">
-        <meta name="keywords" content="psychrometric chart,psychrometrics,HVAC">
-        <title>Psychrometric Page</title>
         <link rel="stylesheet" href="psychrometrics.css" type="text/css" charset="utf-8">
     </head>
 
-    <body style="font-family: 'Fira Sans', sans-serif">
+    <body>
 
-        <div style="display: grid; grid-template-columns: 1400px 1fr ">
-            <div id="vizcontainer" style="grid-column: 1 / 2">
-                <svg id="chartsvg" style="border:1px lightgray solid;"></svg>
+        <div>
+            <div id="vizcontainer">
+                <svg id="chartsvg"></svg>
             </div>
 
-            <div style="grid-column: 2 / 3">
-                <div class="states" data-bind="foreach: states">
-                    <div class="state">
-                        <div>
-                            <label><span class="state-label"> Dry Bulb Temperature / °F </span><input data-bind="textInput: temperature" type="number"></label>
-                        </div>
-                        <div style="margin-bottom:10px">
-                            <label><span class="state-label"> Humidity Ratio </span><input data-bind="textInput: humidityRatio" type="number" step="0.001"></label>
-                        </div>
-                        <div>
-                            <label><span class="state-label">State Label</span><input data-bind="textInput: name" type="text"></label>
-                        </div>
-                        <div class="remove-button">
-                            <button data-bind="click: $root.removeState">Remove State</button>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <button data-bind="click: addState">Add new state</button>
-                </div>
-            </div>
+
+            <span class="state-label">°</span>
         </div>
 
-        <script src="https://d3js.org/d3.v4.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.2/knockout-min.js"></script>
+        <script src="d3.v4.min.js"></script>
+        <script src="knockout-min.js"></script>
         <script src="psychrometrics.js"></script>
     </body>
 </html>
-
-<script>
-    const axis = document.getElementById("yAxisHumid");
-    const axisLabel = document.getElementById("ωlabel");
-    axis.style.visibility = "hidden";
-    axisLabel.style.visibility = "hidden";
-</script>
 
