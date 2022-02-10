@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <link rel="stylesheet" href="psychrometrics.css" type="text/css" charset="utf-8">
+        <style>
+            @font-face {
+                font-family: 'FranklinGothic-MediumCond';
+                src: url('./FRAMDCN.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+            }
+
+            #vizcontainer {
+                width: 100%;
+                text-align: center;
+            }
+        </style>
     </head>
 
     <body>
 
-        <div>
-            <div id="vizcontainer">
-                <svg id="chartsvg"></svg>
-            </div>
-
-
-            <span class="state-label">°</span>
+        <div id="vizcontainer">
+            <svg id="chartsvg"></svg>
         </div>
 
         <script src="d3.v4.min.js"></script>
